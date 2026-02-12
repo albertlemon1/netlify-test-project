@@ -3,54 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Avatar Project</title>
+    <title>Speaking 3D Avatar</title>
     <style>
-        body { margin: 0; overflow: hidden; } /* Removes white borders */
-        canvas { display: block; } /* Makes the 3D canvas fill the screen */
+        body { margin: 0; overflow: hidden; background-color: #202020; font-family: sans-serif; }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            z-index: 10;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        button:hover { background-color: #45a049; }
     </style>
     <script type="importmap">
         {
             "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
             }
         }
     </script>
 </head>
 <body>
 
+    <div id="controls">
+        <h1>Bilingual Avatar</h1>
+        <p>Click a button to hear a history:</p>
+        <button id="btn-en">🇺🇸 Tell English Story</button>
+        <button id="btn-de">🇩🇪 Deutsche Geschichte</button>
+    </div>
+
     <script type="module">
         import * as THREE from 'three';
 
-        // 1. Scene setup
+        // --- 1. SCENE SETUP ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x202020); // Dark grey background
-
-        // 2. Camera setup
+        scene.background = new THREE.Color(0x202020);
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.z = 5;
+        camera.position.z = 3; // Move camera closer to the face
 
-        // 3. Renderer setup
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // 4. Add a test object (Green Cube)
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
-        const cube = new THREE.Mesh(geometry, material);
-        scene.add(cube);
+        // Add Light so we can see the face clearly
+        const light = new THREE.DirectionalLight(0xffffff, 2);
+        light.position.set(5, 5, 5);
+        scene.add(light);
+        scene.add(new THREE.AmbientLight(0x404040));
 
-        // 5. Animation Loop
+        // --- 2. BUILD THE AVATAR (Procedural Robot) ---
+        const avatarGroup = new THREE.Group();
+        scene.add(avatarGroup);
+
+        // Head (Sphere)
+        const headGeo = new THREE.SphereGeometry(1, 32, 32);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0x0077ff, roughness: 0.3 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        avatarGroup.add(head);
+
+        // Eyes (Black spheres)
+        const eyeGeo = new THREE.SphereGeometry(0.15, 16, 16);
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        
+        const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+        leftEye.position.set(-0.35, 0.1, 0.9); // Left, Up, Front
+        avatarGroup.add(leftEye);
+
+        const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+        rightEye.position.set(0.35, 0.1, 0.9);
+        avatarGroup.add(rightEye);
+
+        // Mouth (Red Box that we will stretch)
+        const mouthGeo = new THREE.BoxGeometry(0.4, 0.05, 0.1);
+        const mouthMat = new THREE.MeshBasicMaterial({ color: 0x330000 });
+        const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+        mouth.position.set(0, -0.4, 0.95);
+        avatarGroup.add(mouth);
+
+        // --- 3. SPEECH LOGIC ---
+        let isSpeaking = false;
+        const synth = window.speechSynthesis;
+
+        function speak(text, lang) {
+            if (synth.speaking) {
+                console.log("Already speaking, stopping...");
+                synth.cancel(); // Stop current speech if button clicked again
+                isSpeaking = false;
+                mouth.scale.y = 1; // Reset mouth
+                return; 
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang; // 'en-US' or 'de-DE'
+            utterance.rate = 0.9;  // Slightly slower is clearer
+
+            utterance.onstart = () => { isSpeaking = true; };
+            utterance.onend = () => { 
+                isSpeaking = false; 
+                mouth.scale.y = 1; // Reset mouth when done
+            };
+
+            synth.speak(utterance);
+        }
+
+        // --- 4. STORIES ---
+        const storyEN = "Hello! I am your 3D assistant. I live inside this web browser. I was created using Three dot J S and simple geometry.";
+        const storyDE = "Hallo! Ich bin dein 3D-Assistent. Ich lebe in diesem Webbrowser. Ich wurde mit Three Point J S und einfacher Geometrie erstellt.";
+
+        document.getElementById('btn-en').addEventListener('click', () => speak(storyEN, 'en-US'));
+        document.getElementById('btn-de').addEventListener('click', () => speak(storyDE, 'de-DE'));
+
+        // --- 5. ANIMATION LOOP ---
         function animate() {
             requestAnimationFrame(animate);
-            
-            // Rotate the cube so we know it's 3D
-            cube.rotation.x += 0.01;
-            cube.rotation.y += 0.01;
+
+            // Idle Animation: Slight head bobbing
+            avatarGroup.rotation.y = Math.sin(Date.now() * 0.001) * 0.1;
+            avatarGroup.rotation.x = Math.sin(Date.now() * 0.002) * 0.05;
+
+            // MOUTH ANIMATION
+            if (isSpeaking) {
+                // Randomly open/close mouth to simulate talking
+                // Math.random() gives a jittery "talking" look
+                mouth.scale.y = 1 + Math.random() * 8; 
+            } else {
+                mouth.scale.y = 1; // Closed
+            }
 
             renderer.render(scene, camera);
         }
+
+        // Handle window resizing
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
         animate();
     </script>
 </body>
