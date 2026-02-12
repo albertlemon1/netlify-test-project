@@ -1,2 +1,57 @@
-<h1>SUCCESS! This is version 2 via VS Code.</h1>
-<p>Netlify updated this automatically.</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Avatar Project</title>
+    <style>
+        body { margin: 0; overflow: hidden; } /* Removes white borders */
+        canvas { display: block; } /* Makes the 3D canvas fill the screen */
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // 1. Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x202020); // Dark grey background
+
+        // 2. Camera setup
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 5;
+
+        // 3. Renderer setup
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 4. Add a test object (Green Cube)
+        const geometry = new THREE.BoxGeometry();
+        const material = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        // 5. Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Rotate the cube so we know it's 3D
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
